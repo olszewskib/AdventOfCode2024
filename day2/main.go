@@ -4,7 +4,6 @@ import (
     "fmt"
     "strings"
     "strconv"
-//    "sort"
     "math"
     "os"
 )
@@ -51,8 +50,7 @@ func parseData(data []byte) [][]int {
     return reports
 }
 
-
-func runChecks(x int, y int, increasing bool) bool {
+func isGradual(x int, y int) bool {
 
     if math.Abs(float64(x - y)) > 3 {
         return false
@@ -62,20 +60,35 @@ func runChecks(x int, y int, increasing bool) bool {
         return false
     }
 
-    check := x < y
-    if check != increasing {
-        return false
+    return true
+}
+
+func getDirection(first int, second int) int {
+    if first == second {
+        return 0
     }
 
-    return true
+    if first < second {
+        return 1
+    }
+
+    return -1
+}
+
+func isMonothonic(first int, second int, direction int) bool {
+    return getDirection(first, second) == direction
 }
 
 func validateReport(report []int) bool {
-    var increasing bool = report[0] < report[1]
+    var direction int = getDirection(report[0], report[1])
+
+    if direction == 0 {
+        return false
+    }
 
     for i:=0; i < len(report)-1; i++ {
 
-        if !runChecks(report[i], report[i+1], increasing) {
+        if !isGradual(report[i], report[i+1]) || !isMonothonic(report[i], report[i+1], direction) {
             return false
         }
     }
@@ -83,39 +96,44 @@ func validateReport(report []int) bool {
     return true
 }
 
+func fixReport(report []int, index int) []int{
+    if index == len(report) - 1 {
+        return report[:index]
+    }
+
+    fixedReport := []int{}
+    for it, value := range report {
+        if it == index {
+            continue
+        }
+        fixedReport = append(fixedReport, value)
+    }
+    return fixedReport
+}
+
 func validateReportWithOneError(report []int) bool {
-    var increasing bool = report[0] < report[1]
-    var errors int = 0
+
+    if validateReport(report) {
+                return true
+    }
 
     for i:=0; i < len(report)-1; i++ {
 
-        if !runChecks(report[i], report[i+1], increasing) {
-            errors++
 
-            // To be fixed
-            // Check if we can delete the error, if not return false
-            if errors == 1 && i < len(report) - 2 {
-                if !runChecks(report[i], report[i+2], increasing) && !runChecks(report[i+1], report[i+2], increasing) {
-                    return false
-                }
-            }
+        fixedReportLeft := fixReport(report, i)
+        left := validateReport(fixedReportLeft)
 
-            if errors == 1 && i == len(report) - 2 {
-                if !runChecks(report[i-1], report[i], increasing) && !runChecks(report[i-1], report[i+1], increasing) {
-                    return false
-                }
-            }
+        fixedReportRight := fixReport(report, i+1)
+        right := validateReport(fixedReportRight)
 
-            i++
-            continue
+
+        if left || right {
+            return true
         }
 
-        if errors > 1 {
-            return false
-        }
     }
 
-    return true
+    return false 
 }
 
 func printReport(report []int) {
@@ -143,7 +161,9 @@ func main() {
     inputFile := os.Args[1]
     data := getInputData(inputFile)
     parsedData := parseData(data)
-    validReports := validateReports(parsedData, validateReportWithOneError)
-    fmt.Printf("Valid reports: %d",validReports)
+    validReports := validateReports(parsedData, validateReport)
+    fmt.Printf("Valid reports: %d\n",validReports)
+    validReportsWithOneError := validateReports(parsedData, validateReportWithOneError)
+    fmt.Printf("Valid reports with error: %d\n",validReportsWithOneError)
 
 }
